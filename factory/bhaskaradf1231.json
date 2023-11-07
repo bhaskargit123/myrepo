@@ -1,0 +1,9 @@
+{
+	"name": "bhaskaradf1231",
+	"location": "centralindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "e936f114-9674-4f99-8574-098a92c1138e",
+		"tenantId": "c1721880-76a8-4efe-b320-967c7fd1a746"
+	}
+}

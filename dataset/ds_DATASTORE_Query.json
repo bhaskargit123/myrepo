@@ -1,0 +1,17 @@
+{
+	"name": "ds_DATASTORE_Query",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_azSQL_bhaskarsql_DATASTORE",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "config"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
