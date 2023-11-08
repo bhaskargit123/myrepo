@@ -43,7 +43,8 @@
 				"policy": {
 					"elapsedTimeMetric": {}
 				},
-				"annotations": []
+				"annotations": [],
+				"lastPublishTime": "2023-11-08T06:27:00Z"
 			},
 			"dependsOn": []
 		},
