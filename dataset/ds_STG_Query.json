@@ -1,26 +1,38 @@
 {
-	"name": "ds_DATASTORE_Query",
+	"name": "ds_STG_Query",
 	"properties": {
 		"linkedServiceName": {
-			"referenceName": "ls_azSQL_DATASTORE",
+			"referenceName": "ls_azSQL_STG",
 			"type": "LinkedServiceReference"
 		},
 		"annotations": [],
 		"type": "AzureSqlTable",
 		"schema": [
 			{
-				"name": "customer_id",
+				"name": "empno",
 				"type": "int",
 				"precision": 10
 			},
 			{
-				"name": "name",
+				"name": "ename",
 				"type": "varchar"
+			},
+			{
+				"name": "sal",
+				"type": "money",
+				"precision": 19,
+				"scale": 4
+			},
+			{
+				"name": "last_updated_date",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
 			}
 		],
 		"typeProperties": {
 			"schema": "dbo",
-			"table": "customer"
+			"table": "employee"
 		}
 	},
 	"type": "Microsoft.DataFactory/factories/datasets"

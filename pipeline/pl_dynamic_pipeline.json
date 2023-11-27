@@ -1,0 +1,316 @@
+{
+	"name": "pl_dynamic_pipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup1",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT *, CHAR(39) as SingleChar FROM config WHERE is_enabled=1",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_STG_Query",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup1').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "If Condition1",
+							"type": "IfCondition",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(\n    item().is_incremental_load_enabled,\n    1\n)",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "Set variable1",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "tableName",
+											"value": {
+												"value": "@item().table_name",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Lookup2",
+										"type": "Lookup",
+										"dependsOn": [
+											{
+												"activity": "Set variable1",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderQuery": {
+													"value": "SELECT max_last_updated_date \nFROM config \nWHERE table_name='@{item().table_name}'",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"dataset": {
+												"referenceName": "ds_STG_Query",
+												"type": "DatasetReference"
+											}
+										}
+									},
+									{
+										"name": "Set variable2",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "Lookup2",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "srcQuery",
+											"value": {
+												"value": "@concat(\n    'SELECT * FROM ',\n    variables('tableName'),\n    ' WHERE last_updated_date>',\n    item().SingleChar,\n    activity('Lookup2').output.firstRow.max_last_updated_date,\n    item().SingleChar\n)",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Copy data1",
+										"type": "Copy",
+										"dependsOn": [
+											{
+												"activity": "Set variable2",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderQuery": {
+													"value": "@variables('srcQuery')",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"sink": {
+												"type": "AzureSqlSink",
+												"writeBehavior": "insert",
+												"sqlWriterUseTableLock": false
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "ds_DATASTORE_Query",
+												"type": "DatasetReference"
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "ds_STG_Query_Table",
+												"type": "DatasetReference",
+												"parameters": {
+													"tableName": {
+														"value": "@variables('tableName')",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "Lookup3",
+										"type": "Lookup",
+										"dependsOn": [
+											{
+												"activity": "Copy data1",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderQuery": {
+													"value": "SELECT MAX(last_updated_date) AS max_last_updated_date\nFROM @{item().table_name}",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"dataset": {
+												"referenceName": "ds_DATASTORE_Query",
+												"type": "DatasetReference"
+											}
+										}
+									},
+									{
+										"name": "Set variable3",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "Lookup3",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "updtQuery",
+											"value": {
+												"value": "@concat(\n\t'UPDATE config SET max_last_updated_date = ',\n\titem().SingleChar,\n\t activity('Lookup3').output.firstRow.max_last_updated_date,\n\t item().SingleChar,\n\t ' WHERE table_name=',\n\t item().SingleChar,\n\t variables('tableName'),\n\t item().SingleChar,\n\t '; SELECT ',\n\t item().SingleChar,\n\t '1',\n\t item().SingleChar\n)",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Lookup4",
+										"type": "Lookup",
+										"dependsOn": [
+											{
+												"activity": "Set variable3",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderQuery": {
+													"value": "@variables('updtQuery')",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"dataset": {
+												"referenceName": "ds_STG_Query",
+												"type": "DatasetReference"
+											}
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"tableName": {
+				"type": "String"
+			},
+			"srcQuery": {
+				"type": "String"
+			},
+			"updtQuery": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-11-27T03:34:40Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
